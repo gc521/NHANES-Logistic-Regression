@@ -155,37 +155,36 @@ analytic.data1$Fastomg_Blood_Glucose.cut=NULL
 analytic.data1$HGBA1C.cut=NULL
 analytic.data1$HGBA1C=NULL
 analytic.data1$Fastomg_Blood_Glucose=NULL
+
+
+#Attach appropriate labels to factors of target variable
 analytic.data1$diabetes_status <- revalue(analytic.data1$diabetes_status, c('NA [-Inf,5.7)'='No', '[-Inf,100) NA'='No', '[100, Inf) NA'= 'Yes', 'NA [5.7, Inf)'='Yes') 
                                )
-#Wrangle race variable
+#Wrangle race variable, white are at a higher risk for diabetes statuse comared to other ethinicities, group races in two groups: Non Hispanic White or other
 analytic.data1$Race <- revalue(analytic.data1$Race, c('Mexican American'='Other', 'Other Hispanic'='Other', 'Non-Hispanic Black'='Other', 'Other Race - Including Multi-Rac'='Other'))
 
-analytic.data1$Dx_of_high_BP
 summary(analytic.data3)
 #Convert age = 0 to NA
 analytic.data1$Age[analytic.data1$Age == 0] <- NA
 
 analytic.data2=subset(analytic.data1, select = c(diabetes_status, Age, Gender, Race, BMI, BP_mmHG, Total_Cholesterol,
-                                                 Vit_D_nmol_L, Dx_of_high_BP))
+                                                 Vit_D_nmol_L, Dx_of_high_BP))   #subset variables of interst 
 summary(analytic.data2)
 analytic.data2=subset(analytic.data2, select = diabetes_status:Dx_of_high_BP)
+
+#Use MICE package to impute missing values, based on given parameters, You can experiment with different permutations 
+#of parameters and use cross validation to see which permutation is the best
 impdata=mice(analytic.data2, m = 1, method = c("logreg","norm.predict", "rf", "rf", "norm.predict", "norm.predict", "norm.predict", "norm.predict", "rf"), maxit=20)
-impdata1=complete(impdata,1)
+impdata1=complete(impdata,1) 
 summary(impdata1)
 
 impdata1$Age=discretize(impdata1$Age, impdata1$diabetes_status)
-impdata1$Age=impdata1$Age$Age
-impdata1$BMI=discretize(impdata1$BMI, impdata1$diabetes_status)
-impdata1$BMI=impdata1$BMI$BMI
-impdata1$Total_Cholesterol=discretize(impdata1$Total_Cholesterol, impdata1$diabetes_status)
-impdata1$Total_Cholesterol=impdata1$Total_Cholesterol$Total_Cholesterol
+#discretize age using Minimum description length (MDL) binning 
 
 
-impdata1$BP_mmHG=discretize(impdata1$BP_mmHG, impdata1$diabetes_status)
-
-impdata1$BP_mmHG=impdata1$BP_mmHG$BP_mmHG
 
 
+#Min/Max scalining applied to numeric variables 
 impdata1$Age = scaler(impdata1$Age)
 impdata1$BMI = scaler(impdata1$BMI)
 impdata1$Vit_D_nmol_L = scaler(impdata1$Vit_D_nmol_L)
@@ -206,6 +205,7 @@ fullmodeltcho=impdata1
 summary(fullmodel1)
 fullmodel1=subset(fullmodel, select = c(Age, Vit_D_nmol_L, BP_mmHG, BMI, Total_Cholesterol))
 predictors <- colnames(mydata)
+Map logit response to the numeric variables
 # Bind the logit and tidying the data for plot
 mydata <- mydata %>%
   mutate(logit = log(probabilities/(1-probabilities))) %>%
